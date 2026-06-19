@@ -1,34 +1,28 @@
 // server.js
-// Backend proxy: recibe el PDF en base64 desde la extensión,
-// llama a la API de Claude usando la API KEY guardada en el servidor
-// (nunca se expone al navegador del usuario) y devuelve el texto del análisis.
+// Backend proxy SeNaSa Suite
+// Recibe el PDF en base64 desde la extensión, llama a Claude y devuelve el análisis.
 
 const express = require('express');
 const cors = require('cors');
 
 const app = express();
 
-// Aumentamos el límite porque los PDFs en base64 pueden pesar varios MB
 app.use(express.json({ limit: '15mb' }));
-
-// CORS: permite que la extensión (y opcionalmente cualquier origen) llame a este backend.
-// Si quieres restringirlo más adelante, cambia origin: '*' por la lista de orígenes permitidos.
 app.use(cors({ origin: '*' }));
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 if (!ANTHROPIC_API_KEY) {
-  console.error('⚠️  Falta la variable de entorno ANTHROPIC_API_KEY. Configúrala en Render → Environment.');
+  console.error('⚠️  Falta ANTHROPIC_API_KEY. Configúrala en Render → Environment.');
 }
 
-// Salud del servicio (útil para confirmar que Render lo desplegó bien)
+// Health check
 app.get('/', (req, res) => {
-  res.json({ status: 'ok', service: 'SOA PAS Validator Backend' });
+  res.json({ status: 'ok', service: 'SeNaSa Suite Backend' });
 });
 
-// Endpoint principal: recibe { base64, fechaHoy } y devuelve { texto }
+// Validar formulario PAS
 app.post('/validar-pas', async (req, res) => {
   try {
     const { base64, fechaHoy } = req.body;
@@ -111,14 +105,14 @@ Si no existe escribe: ❌ FIRMA DEL REPRESENTANTE AUSENTE
 1. Busca la fecha de firma del formulario (generalmente al final del documento).
 2. Busca la fecha de la página 1 (Datos Generales).
 3. Verifica que la fecha de firma NO sea anterior a la fecha de datos generales. Si es anterior escribe: ❌ FECHA DE FIRMA ANTERIOR A FECHA DEL FORMULARIO
-4. Verifica que la fecha de firma NO tenga más de 1 mes de diferencia con la fecha de hoy (${fecha}). Si tiene más de un mes escribe: ❌ FORMULARIO VENCIDO - Firmado hace más de un mes
+4. Verifica que la fecha de firma NO tenga más de 1 mes de diferencia con la fecha de hoy. Si tiene más de un mes escribe: ❌ FORMULARIO VENCIDO - Firmado hace más de un mes
 5. Si todo está correcto escribe: ✅ FECHA DE FIRMA VÁLIDA
 
 ---
 ## RESULTADO FINAL
 Escribe: FORMULARIO COMPLETO o FORMULARIO INCOMPLETO según corresponda.`;
 
-    const claudeResponse = await fetch(CLAUDE_URL, {
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -158,5 +152,5 @@ Escribe: FORMULARIO COMPLETO o FORMULARIO INCOMPLETO según corresponda.`;
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en puerto ${PORT}`);
+  console.log(`SeNaSa Suite Backend escuchando en puerto ${PORT}`);
 });
